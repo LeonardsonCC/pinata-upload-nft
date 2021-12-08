@@ -23,38 +23,54 @@ const start = async () => {
   }
 
   recursive.readdirr(imageDir, async function (err, dirs, files) {
-    for (let file of files) {
-      if (!file.endsWith(".png")) continue;
+    Promise.all(
+      files.map(async (file) => {
+        if (!file.endsWith(".png")) return;
 
-      try {
-        const result = await pinata.pinFromFS(file);
+        try {
+          const result = await pinata.pinFromFS(file);
 
-        const id = file.replace(/\D+/g, "");
-        metadataFile = path.join(__dirname, metadataDir, id + ".json");
+          const id = file.replace(/\D+/g, "");
+          metadataFile = path.join(__dirname, metadataDir, id + ".json");
 
-        readFile(metadataFile, "utf8", (err, data) => {
-          if (err) {
-            console.log(`File [${file}] failed read metadata`);
-            return;
-          }
-          const metadata = JSON.parse(data);
-          metadata.image = `ipfs://${result.IpfsHash}`;
-          writeFile(
-            metadataFile,
-            JSON.stringify(metadata, null, 2),
-            function (err) {
-              if (err) {
-                console.log(`File [${file}] failed write metadata`);
-                return;
-              }
-              console.log(`Finished [${id}]!`);
+          readFile(metadataFile, "utf8", (err, data) => {
+            if (err) {
+              console.log(`File [${file}] failed read metadata`);
+              return;
             }
-          );
-        });
-      } catch (err) {
-        console.log(`File [${file}] failed`);
-      }
-    }
+            const metadata = JSON.parse(data);
+            metadata.image = `ipfs://${result.IpfsHash}`;
+            writeFile(
+              metadataFile,
+              JSON.stringify(metadata, null, 2),
+              function (err) {
+                if (err) {
+                  console.log(`File [${file}] failed write metadata`);
+                  return;
+                }
+                console.log(`Finished [${id}]!`);
+              }
+            );
+          });
+        } catch (err) {
+          console.log(`File [${file}] failed`);
+        }
+      })
+    )
+      .then((data) => {
+        console.log(data);
+        pinata
+          .pinFromFS(metadataDir)
+          .then((result) => {
+            console.log(result);
+          })
+          .catch((err) => {
+            console.log("Error uploading metadata", err);
+          });
+      })
+      .catch((err) => {
+        console.log("Some errors ocurred", err);
+      });
   });
 };
 
