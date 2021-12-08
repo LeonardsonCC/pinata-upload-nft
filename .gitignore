@@ -1,0 +1,4 @@
+node_modules
+munk_images/*.png
+munk_metadata/*.json
+.env
